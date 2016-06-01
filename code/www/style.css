@@ -1,0 +1,55 @@
+
+.extraspace1{
+  height:75px;
+}
+
+.extraspace3{
+  width:-75px;
+}
+
+.extraspace2{
+  height:20px;
+}
+
+.shiny-progress .bar {
+background-color: #4AA1FF;
+.opacity = 0.8;
+}
+.shiny-progress .progress {
+height:20px;
+}
+
+.container-fluid {
+	min-width: 1000px;
+	max-width: 1000px;
+	float:none;
+	margin:0 auto;
+}
+
+body {
+font-family: Georgia, serif;
+background-color: #FFFFF;
+//position: absolute;
+//    margin-left: 0px;
+//    margin-top: 0px;
+//background-color: #282828;
+//font-size: 16px;
+} 
+
+div.background2 {
+  background-color: #282828;
+position: absolute;
+    margin-left: 100px;
+    margin-top: 100px;
+}
+
+div.container-fluid {
+background-color: #FFFFFF;
+}
+
+
+h1 {
+  font-weight: bold;
+}
+
+
