@@ -10,11 +10,11 @@ require('RJDBC')
 require('RCurl')
 require('queryBuildR')
 
-#VARIANTS<-"/home/shiny/variantsulb"
-VARIANTS<-"/Users/yalb/Projects/Github/variants/variantsulb"
+VARIANTS<-"/home/shiny/variants"
+#VARIANTS<-"/Users/yalb/Projects/Github/variants/variantsulb"
 
-#SPARK_HOME<-"/home/shiny/spark"
-SPARK_HOME<-"/Users/yalb/spark"
+SPARK_HOME<-"/home/shiny/spark"
+#SPARK_HOME<-"/Users/yalb/spark"
 Sys.setenv(SPARK_HOME=SPARK_HOME)
 Sys.setenv(PATH=paste0(SPARK_HOME,"/bin:",SPARK_HOME,"/sbin:",Sys.getenv("PATH")))
 
