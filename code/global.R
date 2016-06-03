@@ -1,10 +1,7 @@
-
 require('RMySQL')
 require("jsonlite")
 require('rpivotTable')
 require('plyr')
-
-
 require('shiny')
 require('RJDBC')
 require('RCurl')
@@ -196,40 +193,6 @@ procRes<-function(results) {
     
   }
   
-  if (res$scale=="gene") {
-    if (res$scope=="monogenic") {
-      #browser()
-      geneID<-res$locus
-      geneID_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID,"' target='_blank'>",geneID,"</a>")
-      res$scores[1,]<-format(as.numeric(res$scores[1,]),scientific=FALSE,digits=3)
-      res$scores[2,]<-format(as.numeric(res$scores[2,]),scientific=TRUE,digits=3)
-      res$scores[3,]<-format(as.numeric(res$scores[3,]),scientific=FALSE,digits=3)
-      res$scores[4,]<-format(as.numeric(res$scores[4,]),scientific=FALSE,digits=3)
-      res$scoreSummaryRaw<-cbind(t(res$scores),geneID)
-      colnames(res$scoreSummaryRaw)<-c("Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control","Gene_Symbol")
-      res$scoreSummary<-cbind(t(res$scores),geneID_Link)
-      colnames(res$scoreSummary)<-c("Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control","Gene_Symbol")
-    }
-    
-    if (res$scope=="digenic") {
-      genes<-ldply(res$scores[1,])
-      res$scores<-data.matrix(data.frame(res$scores[2:7,]))
-      res$scores[1,]<-format(as.numeric(res$scores[1,]),scientific=FALSE,digits=3)
-      res$scores[2,]<-format(as.numeric(res$scores[2,]),scientific=TRUE,digits=3)
-      res$scores[3,]<-format(as.numeric(res$scores[3,]),scientific=FALSE,digits=3)
-      res$scores[4,]<-format(as.numeric(res$scores[4,]),scientific=FALSE,digits=3)
-      
-      geneID1<-genes[,1]
-      geneID1_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID1,"' target='_blank'>",geneID1,"</a>")
-      geneID2<-genes[,2]
-      geneID2_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID2,"' target='_blank'>",geneID2,"</a>")
-      res$scoreSummaryRaw<-cbind(t(res$scores),geneID1,geneID2)
-      colnames(res$scoreSummaryRaw)<-c("Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control","Gene_Symbol1","Gene_Symbol2")
-      res$scoreSummary<-cbind(t(res$scores),geneID1_Link,geneID2_Link)
-      colnames(res$scoreSummary)<-c("Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control","Gene_Symbol1","Gene_Symbol2")
-    }
-    #browser()
-  }
   res
 }
 
@@ -258,11 +221,12 @@ procRes<-function(folderAnalyses,nameAnalysis) {
   
   if (res$scale=="gene") {
     if (res$scope=="monogenic") {
-      #browser()
       geneID<-res$scores[,1]
       geneID_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID,"' target='_blank'>",geneID,"</a>")
       res$scores[,2]<-format(as.numeric(res$scores[,2]),scientific=FALSE,digits=3)
-      res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=TRUE,digits=3)
+      res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=FALSE,digits=3)
+      #res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=TRUE,digits=3)
+      #res$scores[,3]<-format(-log(as.numeric(res$scores[,3]))/log(10),digits=3)
       res$scores[,4]<-format(as.numeric(res$scores[,4]),scientific=FALSE,digits=3)
       res$scores[,5]<-format(as.numeric(res$scores[,5]),scientific=FALSE,digits=3)
       
@@ -280,7 +244,7 @@ procRes<-function(folderAnalyses,nameAnalysis) {
       geneID2_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID2,"' target='_blank'>",geneID2,"</a>")
       
       res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=FALSE,digits=3)
-      res$scores[,4]<-format(as.numeric(res$scores[,4]),scientific=TRUE,digits=3)
+      res$scores[,4]<-format(as.numeric(res$scores[,4]),scientific=FALSE,digits=3)
       res$scores[,5]<-format(as.numeric(res$scores[,5]),scientific=FALSE,digits=3)
       res$scores[,6]<-format(as.numeric(res$scores[,6]),scientific=FALSE,digits=3)
       
@@ -293,10 +257,16 @@ procRes<-function(folderAnalyses,nameAnalysis) {
   res
 }
 
-getAnalysesNames<-function() {
-analysesFiles<-basename(Sys.glob("users/analyses/*.json"))
-analysesNames<-as.vector(unlist(sapply(analysesFiles,strsplit,'_metadata.json')))
-analysesNames
+getAnalysesNames<-function(username="") {
+  if (username=="") {
+    analysesFiles<-basename(Sys.glob("users/analyses/CTRL*.json"))
+    analysesNames<-as.vector(unlist(sapply(analysesFiles,strsplit,'_metadata.json')))
+  }
+  else {
+    analysesFiles<-basename(Sys.glob("users/analyses/*.json"))
+    analysesNames<-as.vector(unlist(sapply(analysesFiles,strsplit,'_metadata.json')))
+  }
+  analysesNames
 }
 
 analysesNames<-getAnalysesNames()

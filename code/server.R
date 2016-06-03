@@ -45,16 +45,20 @@ shinyServer(function(input, output,session) {
   ####################################################
   
   disableButtons<-function() {
+    shinyjs::disable("filterPhenotypeLoad")
     shinyjs::disable("filterPhenotypeSave")
     shinyjs::disable("filterPhenotypeDelete")
+    shinyjs::disable("filterVariantLoad")
     shinyjs::disable("filterVariantSave")
     shinyjs::disable("filterVariantDelete")
     shinyjs::disable("startAnalysisButton")
   }
   
   enableButtons<-function() {
+    shinyjs::enable("filterPhenotypeLoad")
     shinyjs::enable("filterPhenotypeSave")
     shinyjs::enable("filterPhenotypeDelete")
+    shinyjs::enable("filterVariantLoad")
     shinyjs::enable("filterVariantSave")
     shinyjs::enable("filterVariantDelete")
     shinyjs::enable("startAnalysisButton")
@@ -316,7 +320,7 @@ shinyServer(function(input, output,session) {
   #Refreshing list of analyses
   observe({
     input$refreshResultsButton
-    sessionvalues$analysesNames<-getAnalysesNames()
+    sessionvalues$analysesNames<-getAnalysesNames(sessionvalues$logged_user)
   })
   
   #UI widget for selecting analysis
