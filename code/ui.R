@@ -22,12 +22,6 @@ shinyUI(
         shiny::column(12,
                       uiOutput("loginUI"),
                       tabsetPanel(id="tabset",
-                                  #tabPanel("Home", 
-                                  #        fluidRow(
-                                  #          h3("Welcome to BRiDGEIris Variant ranking interface"),
-                                  #          "Create groups using the Create group panel"
-                                  #        )
-                                  #),
                                   tabPanel("Phenotype manager", 
                                            tags$div(class="extraspace2"),
                                            fluidRow(
@@ -66,7 +60,7 @@ shinyUI(
                                              )
                                            )
                                   ),
-                                  tabPanel("Scoring tool", 
+                                  tabPanel("DiGeST launcher", 
                                            tags$div(class="extraspace2"),
                                            fluidRow(
                                              column(3,
@@ -85,31 +79,22 @@ shinyUI(
                                                     radioButtons("rankingScope", "Scope",
                                                                  c("Monogenic" = "monogenic",
                                                                    "Digenic" = "digenic"
-                                                                 )),
-                                                    checkboxGroupInput("rankingCriterion", "Scoring function",
-                                                                       c("Sum patients" = "sumpatients",
-                                                                         "Sum alleles" = "sumalleles"
-                                                                         #"Student p-value" = "pvalue",
-                                                                         #"Minimum Redundancy Maximum Relevance" = "mrmr"
-                                                                       ),
-                                                                       selected=c("count"))
+                                                                 ))
+                                                    ,
+                                                    radioButtons("rankingCriterion", "Scoring function",
+                                                                 c("Sum patients" = "sumpatients",
+                                                                   "Sum alleles" = "sumalleles"
+                                                                 ),
+                                                                 selected=c("sumpatients"))
                                              ),
                                              column(3,
                                                     h3("3) Results collection"),
                                                     textInput("analysisName","Analysis name",""),
-                                                    bsAlert("alertStartAnalysis"),
-                                                    radioButtons("email", "Mail notification",
-                                                                 c("Yes" = "yes",
-                                                                   "No" = "no"),
-                                                                 selected=c("no"))
+                                                    bsAlert("alertStartAnalysis")
                                              )
                                            ),
                                            hr(),
                                            fluidRow(
-                                             #column(2,offset=3,
-                                             #       div(actionButton("estimateAnalysisTimeButton","Estimate analysis time"),align="center"),
-                                             #       tags$div(class="extraspace1")
-                                             #),
                                              column(2,offset=5,
                                                     div(actionButton("startAnalysisButton","Start analysis",class="btn btn-primary",disabled = TRUE),align="center"),
                                                     tags$div(class="extraspace1")
