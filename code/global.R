@@ -7,11 +7,11 @@ require('RJDBC')
 require('RCurl')
 require('queryBuildR')
 
-VARIANTS<-"/home/shiny/variants"
-#VARIANTS<-"/Users/yalb/Projects/Github/variants/variantsulb"
+#VARIANTS<-"/home/shiny/variants"
+VARIANTS<-"/Users/yalb/Projects/Github/digest/variantsulb"
 
 SPARK_HOME<-"/home/shiny/spark"
-#SPARK_HOME<-"/Users/yalb/spark"
+SPARK_HOME<-"/Users/yalb/spark"
 Sys.setenv(SPARK_HOME=SPARK_HOME)
 Sys.setenv(PATH=paste0(SPARK_HOME,"/bin:",SPARK_HOME,"/sbin:",Sys.getenv("PATH")))
 
@@ -81,14 +81,14 @@ getWidgetTable<-function(data,session,selection='none') {
                       dom= 'lipt',
                       lengthMenu = list(c(20, 100, 1000), c('10', '100','1000')),pageLength = 20,
                       columnDefs = list(
-                        list(
-                          targets = c(1),
-                          render = JS(
-                            "function(data, type, row, meta) {",
-                            "return type === 'display' && data.length > 15 ?",
-                            "'<span title=\"' + data + '\">' + data.substr(0, 11) + '...</span>' : data;",
-                            "}")
-                        ),
+                        # list(
+                        #   targets = c(1),
+                        #   render = JS(
+                        #     "function(data, type, row, meta) {",
+                        #     "return type === 'display' && data.length > 15 ?",
+                        #     "'<span title=\"' + data + '\">' + data.substr(0, 11) + '...</span>' : data;",
+                        #     "}")
+                        # ),
                         list(className="dt-right",targets="_all")
                       )
                     )
@@ -140,62 +140,6 @@ loadData<-function(sql,noLimit=F,maxRows=1000,preproc=T) {
 #Process results
 #####################
 
-
-get4<-function(l) {l[[4]]}
-get1<-function(l) {l[[1]]}
-get2<-function(l) {l[[2]]}
-
-procRes<-function(results) {
-  res<-list()
-  res$name<-results[[1]]
-  res$scale<-results[[2]]
-  res$scope<-results[[3]]
-  res$sqlCase<-results[[4]]
-  res$sqlControl<-results[[5]]
-  res$start_time<-as.POSIXct(results[[4]],origin = "1970-01-01",tz="Europe/Brussels")
-  res$end_time<-as.POSIXct(results[[5]],origin = "1970-01-01",tz="Europe/Brussels")
-  res$run_time<-round(results[[6]],digits=2)
-  res$scores<-sapply(results[[7]],get2)
-  res$locus<-sapply(results[[7]],get1)
-  res$caseSampleID=results[[8]]
-  res$controlSampleID=results[[9]]
-  res$group1name=results[[10]]
-  res$group2name=results[[11]]
-  
-  if (res$scale=="variant") {
-    if (res$scope=="monogenic") {
-      variantsID<-res$locus[1,]
-      scoreSummary<-cbind(t(data.frame(sapply(variantsID,strsplit,':'))),res$locus[2,])
-      colnames(scoreSummary)<-c("Chr","Position","Reference","Alternative",'Gene_Symbol')
-      rownames(scoreSummary)<-NULL
-      scoreSummary[,'Gene_Symbol']<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",scoreSummary[,'Gene_Symbol'],"' target='_blank'>",scoreSummary[,'Gene_Symbol'],"</a>")
-      #if (results[[2]]=="pairVariantsMonogenic") {
-      #  uniqueid2<-apply(res$locus[5:7,],2,paste,collapse=":")
-      #  to.keep<-match(uniqueid2,dbvariants$uniqueid)
-      #  res$infovariants2<-dbvariants[to.keep,]
-      #  
-      #  scoreSummary2<-cbind(res$locus[5,],res$infovariants2[,'reference'],res$infovariants2[,'alternative'],res$infovariants1[,'gene_symbol'])
-      #  colnames(scoreSummary2)<-c("Locus2","Reference2", "Alternative2","Gene symbol")
-      #}
-    }
-    
-    if (results[[2]]=="pairVariantsDigenic") {
-      uniqueid2<-apply(res$locus[6:8,],2,paste,collapse=":")
-      to.keep<-match(uniqueid2,dbvariants$uniqueid)
-      res$infovariants2<-dbvariants[to.keep,]
-      scoreSummary2<-cbind(res$infovariants1[,'gene_symbol'],res$locus[6,],res$infovariants2[,'reference'],res$infovariants2[,'alternative'],res$infovariants2[,'gene_symbol'])
-      colnames(scoreSummary2)<-c("Gene symbol1","Locus2","Reference2", "Alternative2","Gene symbol2")
-      
-    }
-    
-    res$scoreSummary<-cbind(Score=t(res$scores),scoreSummary)
-    colnames(res$scoreSummary)[1:3]<-c("Score","Score_Case","Score_Control")
-    
-  }
-  
-  res
-}
-
 procRes<-function(folderAnalyses,nameAnalysis) {
   json_file<-paste0(folderAnalyses,nameAnalysis,"_metadata.json")
   csv_file<-paste0(folderAnalyses,nameAnalysis,"_ranking.csv")
@@ -219,6 +163,43 @@ procRes<-function(folderAnalyses,nameAnalysis) {
   
   res$scores<-read.table(csv_file,stringsAsFactors=F)
   
+  if (res$scale=="variant") {
+    if (res$scope=="monogenic") {
+      variantID<-res$scores[,1]
+      geneID<-res$scores[,2]
+      geneID_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID,"' target='_blank'>",geneID,"</a>")
+      res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=FALSE,digits=3)
+      res$scores[,4]<-format(as.numeric(res$scores[,4]),scientific=FALSE,digits=3)
+      #res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=TRUE,digits=3)
+      #res$scores[,3]<-format(-log(as.numeric(res$scores[,3]))/log(10),digits=3)
+      res$scores[,5]<-format(as.numeric(res$scores[,5]),scientific=FALSE,digits=3)
+      res$scores[,6]<-format(as.numeric(res$scores[,6]),scientific=FALSE,digits=3)
+      
+      res$scoreSummaryRaw<-cbind(variantID,geneID,res$scores[,c(-1,-2)])
+      colnames(res$scoreSummaryRaw)<-c("Variant_ID","Gene_Symbol","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      res$scoreSummary<-cbind(variantID,geneID_Link,res$scores[,c(-1,-2)])
+      colnames(res$scoreSummary)<-c("Variant_ID","Gene_Symbol","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      
+    }
+    
+    if (res$scope=="digenic") {
+      variantID1<-res$scores[,1]
+      geneID1<-res$scores[,2]
+      variantID2<-res$scores[,3]
+      geneID1_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID1,"' target='_blank'>",geneID1,"</a>")
+      geneID2<-res$scores[,4]
+      geneID2_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID2,"' target='_blank'>",geneID2,"</a>")
+      
+      res$scores[,5]<-format(as.numeric(res$scores[,5]),scientific=FALSE,digits=3)
+      res$scores[,6]<-format(as.numeric(res$scores[,6]),scientific=FALSE,digits=3)
+      res$scores[,7]<-format(as.numeric(res$scores[,7]),scientific=FALSE,digits=3)
+      res$scores[,8]<-format(as.numeric(res$scores[,8]),scientific=FALSE,digits=3)
+      res$scoreSummaryRaw<-cbind(variantID1,geneID1,variantID2,geneID2,res$scores[,-c(1:4)])
+      colnames(res$scoreSummaryRaw)<-c("Variant_ID1","Gene_Symbol1","Variant_ID2","Gene_Symbol2","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      res$scoreSummary<-cbind(variantID1,geneID1_Link,variantID2,geneID2_Link,res$scores[,-c(1:4)])
+      colnames(res$scoreSummary)<-c("Variant_ID1","Gene_Symbol1","Variant_ID2","Gene_Symbol2","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+    }
+  }
   if (res$scale=="gene") {
     if (res$scope=="monogenic") {
       geneID<-res$scores[,1]
@@ -248,9 +229,9 @@ procRes<-function(folderAnalyses,nameAnalysis) {
       res$scores[,5]<-format(as.numeric(res$scores[,5]),scientific=FALSE,digits=3)
       res$scores[,6]<-format(as.numeric(res$scores[,6]),scientific=FALSE,digits=3)
       
-      res$scoreSummaryRaw<-cbind(geneID1,geneID2,res$scores)
+      res$scoreSummaryRaw<-cbind(geneID1,geneID2,res$scores[,-c(1:2)])
       colnames(res$scoreSummaryRaw)<-c("Gene_Symbol1","Gene_Symbol2","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
-      res$scoreSummary<-cbind(geneID1_Link,geneID2_Link,res$scores)
+      res$scoreSummary<-cbind(geneID1_Link,geneID2_Link,res$scores[,-c(1:2)])
       colnames(res$scoreSummary)<-c("Gene_Symbol1","Gene_Symbol2","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
     }
   }
