@@ -16,18 +16,6 @@ createFilterVariant<-function(input,output,session,sessionvalues) {
   output$filterVariantQueryBuilderWidget<-renderQueryBuildR({
     load("filterVariantSpec.Rdata")
     rules<-NULL
-    query<-input$sampleid
-    if (length(query)>0) {
-      query<-substr(query,2,nchar(query))
-    }
-    rules<-list(
-      condition= 'AND',
-      rules=list(list(
-        id= 'sample_id',
-        operator= 'in',
-        value=query
-      ))
-    )
     queryBuildR(rules,filters)
   })
   
@@ -97,7 +85,7 @@ createFilterVariant<-function(input,output,session,sessionvalues) {
   })
   
   output$filterVariant<-renderUI({
-    fluidRow(column(12,
+    fluidRow(shiny::column(12,
                     actionButton("filterVariantLoad", label = "Load filter"),  
                     actionButton("filterVariantSave", label = "Save filter"),
                     actionButton("filterVariantDelete", label = "Delete filter(s)"),

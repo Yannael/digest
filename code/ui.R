@@ -1,9 +1,3 @@
-library(shiny)
-library(DT)
-library(queryBuildR)
-library(shinyBS)
-library(shinyjs)
-
 shinyUI(
   fluidPage(
     useShinyjs(),
@@ -25,7 +19,7 @@ shinyUI(
                                   tabPanel("Phenotype manager", 
                                            tags$div(class="extraspace2"),
                                            fluidRow(
-                                             column(12,
+                                             shiny::column(12,
                                                     uiOutput("filterPhenotype"),
                                                     div(
                                                       actionButton("getIDButtonPhenotypesGroup", label = "Get sample IDs"),
@@ -46,7 +40,7 @@ shinyUI(
                                   tabPanel("Gene & variant filtering manager", 
                                            tags$div(class="extraspace2"),
                                            fluidRow(
-                                             column(12,
+                                             shiny::column(12,
                                                     uiOutput("filterVariant"),
                                                     div(downloadButton('downloadVariantsSelection', label = "Download selection (CSV)",class = NULL),
                                                         align="right"),
@@ -63,31 +57,28 @@ shinyUI(
                                   tabPanel("DiGeST launcher", 
                                            tags$div(class="extraspace2"),
                                            fluidRow(
-                                             column(3,
+                                             shiny::column(3,
                                                     h3("1) Variants group(s)"),
                                                     uiOutput("selectSampleControlUI"),
-                                                    textInput("caseGroupMAF","MAF threshold","0.5"),
-                                                    uiOutput("selectSampleCaseUI"),
-                                                    textInput("controlGroupMAF","MAF threshold","0.5")
+                                                    uiOutput("selectSampleCaseUI")
                                              ),
-                                             column(4,offset=1,
+                                             shiny::column(4,offset=1,
                                                     h3("2) Scoring parameters"),
-                                                    radioButtons("rankingScale", "Ranking scale",
-                                                                 c("Gene" = "gene",
-                                                                   "Variant" = "variant"
+                                                    radioButtons("rankingScale", "Grouping",
+                                                                 c("Variant" = "variant",
+                                                                   "Gene" = "gene"
                                                                  )),
-                                                    radioButtons("rankingScope", "Scope",
-                                                                 c("Monogenic" = "monogenic",
-                                                                   "Digenic" = "digenic"
+                                                    radioButtons("rankingScope", "Interaction",
+                                                                 c("Univariate" = "monogenic",
+                                                                   "Bivariate" = "digenic"
                                                                  ))
                                                     ,
                                                     radioButtons("rankingCriterion", "Scoring function",
-                                                                 c("Sum patients" = "sumpatients",
-                                                                   "Sum alleles" = "sumalleles"
+                                                                 c("Sum alleles" = "sumalleles"
                                                                  ),
-                                                                 selected=c("sumpatients"))
+                                                                 selected=c("sumalleles"))
                                              ),
-                                             column(3,
+                                             shiny::column(3,
                                                     h3("3) Results collection"),
                                                     textInput("analysisName","Analysis name",""),
                                                     bsAlert("alertStartAnalysis")
@@ -95,7 +86,7 @@ shinyUI(
                                            ),
                                            hr(),
                                            fluidRow(
-                                             column(2,offset=5,
+                                             shiny::column(2,offset=5,
                                                     div(actionButton("startAnalysisButton","Start analysis",class="btn btn-primary",disabled = TRUE),align="center"),
                                                     tags$div(class="extraspace1")
                                              )
@@ -104,14 +95,14 @@ shinyUI(
                                   tabPanel("Results explorer", 
                                            tags$div(class="extraspace2"),
                                            fluidRow(
-                                             column(3,
+                                             shiny::column(3,
                                                     uiOutput("selectAnalysisUI"),
                                                     actionButton("refreshResultsButton","Refresh")
                                              )
                                            ),
                                            hr(),
                                            fluidRow(
-                                             column(12,
+                                             shiny::column(12,
                                                     uiOutput("resultsPanel"),
                                                     tags$div(class="extraspace1")
                                              )
@@ -124,8 +115,4 @@ shinyUI(
       textOutput("done")
     )
   )
-  
 )
-
-
-

@@ -1,4 +1,4 @@
 "Name"	"SQL"
 "All"	""
-"control_huderf"	"Data_Source = 'ULB' AND ( Pathology = 'Control' OR Pathology = 'NEURODEV' ) "
-"tol_without_AJT19"	"Pathology = 'TOL' AND Sample_ID != 'AJT19'"
+"EAS"	"Data_Source = '1000 Genomes' AND Super_Population = 'EAS'"
+"EUR"	"Data_Source = '1000 Genomes' AND Super_Population = 'EUR'"

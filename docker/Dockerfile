@@ -18,7 +18,7 @@ ENV HOME /home/shiny
 WORKDIR $HOME
 
 #Install Spark
-RUN wget http://litpc45.ulb.ac.be/spark1.6_2.10.tgz
+RUN wget http://litpc45.ulb.ac.be/spark-2.0.0_Hadoop-2.6_Scala-2.11.tgz
 RUN tar xvzf spark1.6_2.10.tgz
 ENV SPARK_HOME $HOME/spark
 
@@ -36,16 +36,7 @@ RUN R -e "devtools::install_github('rstudio/DT')"
 RUN R -e "devtools::install_github('yannael/queryBuildR')"
 RUN R -e "devtools::install_github('smartinsightsfromdata/rpivotTable')"
 
-##################################
-#For in-house cluster connection
 USER root
-RUN mkdir /home/shiny/.ssh
-ADD id_rsa /home/shiny/.ssh/id_rsa
-ADD known_hosts /home/shiny/.ssh/known_hosts
-RUN chown -R shiny:shiny /home/shiny/.ssh
-RUN chmod 700 /home/shiny/.ssh
-RUN chmod 600 /home/shiny/.ssh/id_rsa
-RUN chmod 600 /home/shiny/.ssh/known_hosts
 
 #Make silent SSH connection to cluster, and start Shiny server
 ADD startupscript.sh /usr/bin/startupscript.sh
@@ -56,7 +47,6 @@ WORKDIR $HOME
 #RUN echo "export PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$HOME/anaconda2/bin:$PATH" >>.bashrc
 RUN usermod -s /bin/bash shiny
 
-#Expose ports for Impala and SSH
-EXPOSE 21050
+#Expose ports for SSH
 EXPOSE 22
 

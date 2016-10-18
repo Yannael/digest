@@ -89,7 +89,7 @@ createFilterPhenotype<-function(input,output,session,sessionvalues) {
   })
   
   output$filterPhenotype<-renderUI({
-    fluidRow(column(12,
+    fluidRow(shiny::column(12,
                     actionButton("filterPhenotypeLoad", label = "Load filter"),  
                     actionButton("filterPhenotypeSave", label = "Save filter"),
                     actionButton("filterPhenotypeDelete", label = "Delete filter(s)"),

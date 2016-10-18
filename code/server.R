@@ -1,15 +1,3 @@
-library(shiny)
-library(DT)
-library(plyr)
-library(ggplot2)
-library(queryBuildR)
-library(shinyBS)
-library(rpivotTable)
-library(httr)
-library(shinyjs)
-require(jsonlite)
-library(RCurl)
-
 source("filterPhenotypes.R")
 source("filterVariants.R")
 
@@ -29,36 +17,22 @@ shinyServer(function(input, output,session) {
   output<-createFilterPhenotype(input,output,session,sessionvalues)
   output<-createFilterVariant(input,output,session,sessionvalues)
   
-  observe({
-    query<-input$sampleid
-    if (length(query)>0) {
-      query<-substr(query,2,nchar(query))
-      if (query!="") {
-        updateTabsetPanel(session, "tabset", selected = "Gene & variant filtering manager")
-      }
-    }
-  })
-  
   
   ####################################################
   #User login and UI controls
   ####################################################
   
   disableButtons<-function() {
-    shinyjs::disable("filterPhenotypeLoad")
     shinyjs::disable("filterPhenotypeSave")
     shinyjs::disable("filterPhenotypeDelete")
-    shinyjs::disable("filterVariantLoad")
     shinyjs::disable("filterVariantSave")
     shinyjs::disable("filterVariantDelete")
     shinyjs::disable("startAnalysisButton")
   }
   
   enableButtons<-function() {
-    shinyjs::enable("filterPhenotypeLoad")
     shinyjs::enable("filterPhenotypeSave")
     shinyjs::enable("filterPhenotypeDelete")
-    shinyjs::enable("filterVariantLoad")
     shinyjs::enable("filterVariantSave")
     shinyjs::enable("filterVariantDelete")
     shinyjs::enable("startAnalysisButton")
@@ -219,7 +193,7 @@ shinyServer(function(input, output,session) {
       niceNames<-as.vector(sapply(colnames(sessionvalues$variants),idToName))
       niceNames<-colnames(sessionvalues$variants)
       selectInput('showVarVariants', 'Select variables to display', niceNames, 
-                  selected=niceNames[c(1,2:7)],multiple=TRUE, selectize=TRUE,width='1050px')
+                  selected=niceNames[c(1:7)],multiple=TRUE, selectize=TRUE,width='1050px')
     })
   })
   
@@ -241,6 +215,7 @@ shinyServer(function(input, output,session) {
       zip(con,c('variantSelection.csv'))
     }
   )
+  
   output$pivotTableVariants<-renderRpivotTable({
     if (length(input$showVarVariants)>0) {
       data<-sessionvalues$variants[,sapply(input$showVarVariants,nameToId)]
@@ -295,12 +270,9 @@ shinyServer(function(input, output,session) {
           sqlCase<-variantsGroup$SQL[selectSampleCaseIndex]
           sqlCase<-preprocSQL(sqlCase)
           
-          controlMAF<-input$controlGroupMAF
-          caseMAF<-input$caseGroupMAF
-          
           scoringFunction<-input$rankingCriterion
           
-          jobArguments<-rbind(analysisName,scope,scale,sqlControl,sqlCase,sampleControlName,sampleCaseName,controlMAF,caseMAF,VARIANTS,scoringFunction)
+          jobArguments<-rbind(analysisName,scope,scale,sqlControl,sqlCase,sampleControlName,sampleCaseName,VARIANTS,scoringFunction)
           setwd("spark")
           write.table(file="jobsArguments.conf",jobArguments,quote=F,col.names=F,row.names=F)
           system(paste0("./run_local.sh ",analysisName," ../users/analyses"))
@@ -462,7 +434,7 @@ shinyServer(function(input, output,session) {
     if (length(sessionvalues$variantDataGene)>0) {
       niceNames<-as.vector(sapply(colnames(sessionvalues$variantDataGene),idToName))
       selectInput('showVarMetadata', 'Select variables to display', niceNames, 
-                  selected=niceNames[c(1:8,24:26,17)],multiple=TRUE, selectize=TRUE,width='1050px')
+                  selected=niceNames[c(1:7,27)],multiple=TRUE, selectize=TRUE,width='1050px')
     }
   })
   
@@ -487,16 +459,16 @@ shinyServer(function(input, output,session) {
   #Display analysis metadata
   output$resultsMetadata<-renderUI({
     fluidRow(
-      column(3,
+      shiny::column(3,
              strong("Control group: "),br(),
              strong("Pathological group: "),br(),
              strong("Start time: "),br(),
              strong("End time: "),br(),
              strong("Total run time: ")
       ),
-      column(4,
-             paste0(sessionvalues$results$group1name," (n=",length(sessionvalues$results$controlSampleID),")"),br(),
-             paste0(sessionvalues$results$group2name," (n=",length(sessionvalues$results$caseSampleID),")"),br(),
+      shiny::column(4,
+             paste0(sessionvalues$results$controlGroupName," (n=",length(sessionvalues$results$controlSampleID),")"),br(),
+             paste0(sessionvalues$results$caseGroupName," (n=",length(sessionvalues$results$caseSampleID),")"),br(),
              sessionvalues$results$start_time,br(),
              sessionvalues$results$end_time,br(),
              paste(sessionvalues$results$run_time, "seconds")
@@ -520,7 +492,7 @@ shinyServer(function(input, output,session) {
   #UI for results
   output$resultsPanel<-renderUI({
     fluidRow(
-      column(12,
+      shiny::column(12,
              uiOutput("resultsMetadata"),
              hr(),
              h3("Scoring results"),
@@ -531,7 +503,7 @@ shinyServer(function(input, output,session) {
              DT::dataTableOutput('resultsTable'),
              hr(),
              fluidRow(
-               column(12,
+               shiny::column(12,
                       fluidRow(
                         uiOutput("showVarMetadataUI"),
                         dataTableOutput('variantsMetadataTable')
@@ -544,8 +516,6 @@ shinyServer(function(input, output,session) {
              )
       )
     )
-    
   })
-  
 })
 

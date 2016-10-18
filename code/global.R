@@ -1,21 +1,28 @@
-require('RMySQL')
-require("jsonlite")
-require('rpivotTable')
-require('plyr')
-require('shiny')
-require('RJDBC')
-require('RCurl')
-require('queryBuildR')
+library('shiny')
+library('shinyBS')
+library('shinyjs')
 
-#VARIANTS<-"/home/shiny/variants"
-VARIANTS<-"/Users/yalb/Projects/Github/digest/variantsulb"
+library('RMySQL')
+library('RJDBC')
+
+library("jsonlite")
+library('httr')
+library('RCurl')
+library('ggplot2')
+library('DT')
+library('queryBuildR')
+library('rpivotTable')
+library('plyr')
+
+VARIANTS<-"/home/shiny/variants"
+#VARIANTS<-"/Users/yalb/Projects/BridgeIRIS/digest/exomes_1000g_p_subset"
 
 SPARK_HOME<-"/home/shiny/spark"
-SPARK_HOME<-"/Users/yalb/spark"
+#SPARK_HOME<-"/Users/yalb/spark"
 Sys.setenv(SPARK_HOME=SPARK_HOME)
 Sys.setenv(PATH=paste0(SPARK_HOME,"/bin:",SPARK_HOME,"/sbin:",Sys.getenv("PATH")))
 
-USE_CLUSTER<-TRUE
+USE_CLUSTER<-FALSE
 
 folderAnalyses<-"users/analyses/"
 
@@ -28,22 +35,19 @@ if (USE_CLUSTER) {
               classPath = list.files(IMPALA_CLASSPATH,pattern="jar$",full.names=T),
               identifier.quote="`")
   
-  VARIANTS_TABLE<-'digest.exomes_hc_ulb'
-  #VARIANTS_TABLE<-'digest.exomes_hc_1000g'
+  VARIANTS_TABLE<-'digest.exomes_1000g_p'
   
 } else {
   .libPaths(c(file.path(Sys.getenv("SPARK_HOME"), "R", "lib"), .libPaths()))
   library(SparkR)
-  require('shiny') #Necessary for column function
   
   sparkEnvir <- list('spark.sql.parquet.binaryAsString'='true') #Needed to read strings from Parquet
-  sc<-sparkR.init(master="local[4]",sparkEnvir=sparkEnvir)
-  sqlContext <- sparkRSQL.init(sc) #sparkRHive.init(sc)#
+  sparkR.session(master="local[4]",sparkEnvir=sparkEnvir)
   
   VARIANTS_TABLE<-"variants"
   
-  df <- read.df(sqlContext, VARIANTS, "parquet")
-  registerTempTable(df, VARIANTS_TABLE);
+  df <- read.df(VARIANTS, "parquet")
+  createOrReplaceTempView(df, VARIANTS_TABLE);
   
 }
 
@@ -60,7 +64,7 @@ loadPhenotypes<-function(sql) {
     sql<-paste0(" where ",sql)
     sql<-gsub(',',"','",sql)
   }
-  condb<-dbConnect(RSQLite::SQLite(), paste0("phenotypes.db"))
+  condb<-dbConnect(RSQLite::SQLite(), paste0("phenotypesSubset.db"))
   data<-dbGetQuery(condb,paste0("select * from phenotypes ",sql))
   dbDisconnect(condb)
   data
@@ -108,13 +112,12 @@ loadData<-function(sql,noLimit=F,maxRows=1000,preproc=T) {
   if (preproc) {
     sql<-preprocSQL(sql)
   }
-  
   if (USE_CLUSTER) {
     condb <- dbConnect(drv,IMPALA_SERVER )
     nbrows<-dbGetQuery(condb,paste0("select count(*) from ",VARIANTS_TABLE," ",sql))
   }
   else {
-    nbrows<-collect(sql(sqlContext,paste0("select count(*) from ",VARIANTS_TABLE," ",sql)))
+    nbrows<-collect(sql(paste0("select count(*) from ",VARIANTS_TABLE," ",sql)))
   }
   
   if (noLimit) limit<-""
@@ -129,7 +132,7 @@ loadData<-function(sql,noLimit=F,maxRows=1000,preproc=T) {
     dbDisconnect(condb)
   }
   else {
-    data<-collect(sql(sqlContext,paste0("select * from ",VARIANTS_TABLE," ",sql,limit)))
+    data<-collect(sql(paste0("select * from ",VARIANTS_TABLE," ",sql,limit)))
   }
   
   results<-list(data=data,nbRowsExceededWarningMessage=nbRowsExceededWarningMessage)
@@ -168,17 +171,11 @@ procRes<-function(folderAnalyses,nameAnalysis) {
       variantID<-res$scores[,1]
       geneID<-res$scores[,2]
       geneID_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID,"' target='_blank'>",geneID,"</a>")
-      res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=FALSE,digits=3)
-      res$scores[,4]<-format(as.numeric(res$scores[,4]),scientific=FALSE,digits=3)
-      #res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=TRUE,digits=3)
-      #res$scores[,3]<-format(-log(as.numeric(res$scores[,3]))/log(10),digits=3)
-      res$scores[,5]<-format(as.numeric(res$scores[,5]),scientific=FALSE,digits=3)
-      res$scores[,6]<-format(as.numeric(res$scores[,6]),scientific=FALSE,digits=3)
-      
+      res$scores[,6]<-format(-log(as.numeric(res$scores[,4]))/log(10),scientific=FALSE,digits=3)
       res$scoreSummaryRaw<-cbind(variantID,geneID,res$scores[,c(-1,-2)])
-      colnames(res$scoreSummaryRaw)<-c("Variant_ID","Gene_Symbol","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      colnames(res$scoreSummaryRaw)<-c("Variant_ID","Gene_Symbol","Ratio_Difference","-log10_P_Value","Total_Variants","Score_Case","Score_Control")
       res$scoreSummary<-cbind(variantID,geneID_Link,res$scores[,c(-1,-2)])
-      colnames(res$scoreSummary)<-c("Variant_ID","Gene_Symbol","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      colnames(res$scoreSummary)<-c("Variant_ID","Gene_Symbol","Ratio_Difference","-log10_P_Value","Total_Variants","Score_Case","Score_Control")
       
     }
     
@@ -189,15 +186,12 @@ procRes<-function(folderAnalyses,nameAnalysis) {
       geneID1_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID1,"' target='_blank'>",geneID1,"</a>")
       geneID2<-res$scores[,4]
       geneID2_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID2,"' target='_blank'>",geneID2,"</a>")
-      
       res$scores[,5]<-format(as.numeric(res$scores[,5]),scientific=FALSE,digits=3)
-      res$scores[,6]<-format(as.numeric(res$scores[,6]),scientific=FALSE,digits=3)
-      res$scores[,7]<-format(as.numeric(res$scores[,7]),scientific=FALSE,digits=3)
-      res$scores[,8]<-format(as.numeric(res$scores[,8]),scientific=FALSE,digits=3)
+      res$scores[,6]<-format(-log(as.numeric(res$scores[,6]))/log(10),scientific=FALSE,digits=3)
       res$scoreSummaryRaw<-cbind(variantID1,geneID1,variantID2,geneID2,res$scores[,-c(1:4)])
-      colnames(res$scoreSummaryRaw)<-c("Variant_ID1","Gene_Symbol1","Variant_ID2","Gene_Symbol2","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      colnames(res$scoreSummaryRaw)<-c("Variant_ID1","Gene_Symbol1","Variant_ID2","Gene_Symbol2","Ratio_Difference","log10_P_Value","Total_Variants","Score_Case","Score_Control")
       res$scoreSummary<-cbind(variantID1,geneID1_Link,variantID2,geneID2_Link,res$scores[,-c(1:4)])
-      colnames(res$scoreSummary)<-c("Variant_ID1","Gene_Symbol1","Variant_ID2","Gene_Symbol2","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      colnames(res$scoreSummary)<-c("Variant_ID1","Gene_Symbol1","Variant_ID2","Gene_Symbol2","Ratio_Difference","log10_P_Value","Total_Variants","Score_Case","Score_Control")
     }
   }
   if (res$scale=="gene") {
@@ -205,16 +199,12 @@ procRes<-function(folderAnalyses,nameAnalysis) {
       geneID<-res$scores[,1]
       geneID_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID,"' target='_blank'>",geneID,"</a>")
       res$scores[,2]<-format(as.numeric(res$scores[,2]),scientific=FALSE,digits=3)
-      res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=FALSE,digits=3)
-      #res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=TRUE,digits=3)
-      #res$scores[,3]<-format(-log(as.numeric(res$scores[,3]))/log(10),digits=3)
-      res$scores[,4]<-format(as.numeric(res$scores[,4]),scientific=FALSE,digits=3)
-      res$scores[,5]<-format(as.numeric(res$scores[,5]),scientific=FALSE,digits=3)
+      res$scores[,3]<-format(-log(as.numeric(res$scores[,3]))/log(10),scientific=FALSE,digits=3)
       
       res$scoreSummaryRaw<-cbind(geneID,res$scores[,-1])
-      colnames(res$scoreSummaryRaw)<-c("Gene_Symbol","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      colnames(res$scoreSummaryRaw)<-c("Gene_Symbol","Ratio_Difference","log10_P_Value","Total_Variants","Score_Case","Score_Control")
       res$scoreSummary<-cbind(geneID_Link,res$scores[,-1])
-      colnames(res$scoreSummary)<-c("Gene_Symbol","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      colnames(res$scoreSummary)<-c("Gene_Symbol","Ratio_Difference","log10_P_Value","Total_Variants","Score_Case","Score_Control")
       
     }
     
@@ -225,61 +215,89 @@ procRes<-function(folderAnalyses,nameAnalysis) {
       geneID2_Link<-paste0("<a href='http://www.ncbi.nlm.nih.gov/omim/?term=",geneID2,"' target='_blank'>",geneID2,"</a>")
       
       res$scores[,3]<-format(as.numeric(res$scores[,3]),scientific=FALSE,digits=3)
-      res$scores[,4]<-format(as.numeric(res$scores[,4]),scientific=FALSE,digits=3)
-      res$scores[,5]<-format(as.numeric(res$scores[,5]),scientific=FALSE,digits=3)
-      res$scores[,6]<-format(as.numeric(res$scores[,6]),scientific=FALSE,digits=3)
+      res$scores[,4]<-format(-log(as.numeric(res$scores[,4]))/log(10),scientific=FALSE,digits=3)
       
       res$scoreSummaryRaw<-cbind(geneID1,geneID2,res$scores[,-c(1:2)])
-      colnames(res$scoreSummaryRaw)<-c("Gene_Symbol1","Gene_Symbol2","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      colnames(res$scoreSummaryRaw)<-c("Gene_Symbol1","Gene_Symbol2","Ratio_Difference","log10_P_Value","Total_Variants","Score_Case","Score_Control")
       res$scoreSummary<-cbind(geneID1_Link,geneID2_Link,res$scores[,-c(1:2)])
-      colnames(res$scoreSummary)<-c("Gene_Symbol1","Gene_Symbol2","Ratio_Difference","P_Value","Ratio_Case","Ratio_Control","Score_Case","Score_Control")
+      colnames(res$scoreSummary)<-c("Gene_Symbol1","Gene_Symbol2","Ratio_Difference","log10_P_Value","Total_Variants","Score_Case","Score_Control")
     }
   }
   res
 }
 
 getAnalysesNames<-function(username="") {
-  if (username=="") {
-    analysesFiles<-basename(Sys.glob("users/analyses/CTRL*.json"))
-    analysesNames<-as.vector(unlist(sapply(analysesFiles,strsplit,'_metadata.json')))
-  }
-  else {
-    analysesFiles<-basename(Sys.glob("users/analyses/*.json"))
-    analysesNames<-as.vector(unlist(sapply(analysesFiles,strsplit,'_metadata.json')))
-  }
+  analysesFiles<-basename(Sys.glob("users/analyses/*.json"))
+  analysesNames<-as.vector(unlist(sapply(analysesFiles,strsplit,'_metadata.json')))
   analysesNames
 }
 
 analysesNames<-getAnalysesNames()
 
-dummy<-function() {
+updateVariantFilter<-function() {
   
-  condb<-dbConnect(RSQLite::SQLite(), paste0("digest/phenotypes.db"))
-  data<-dbGetQuery(condb,paste0("select * from phenotypes "))
-  dbDisconnect(condb)
+  condb <- dbConnect(drv,IMPALA_SERVER )
+  rs<-dbSendQuery(condb,paste0("select ",fields_select," from ",VARIANTS_TABLE," limit 1"))
+  column_info<-dbColumnInfo(rs)
   
-  data<-data[which(data[,1]=="1000 Genomes"),]
-  dataEUR<-data[(which(data[,5]=="EUR"))[1:25],]
-  dataEAS<-data[(which(data[,5]=="EAS"))[1:25],]
+  data<-collect(sql(sqlContext,paste0("select * from ",VARIANTS_TABLE," limit 1")))
+  data.type<-sapply(data,class)
+  column_info<-cbind(names(data.type),as.vector(data.type))
   
-  phenotypes<-rbind(dataEUR,dataEAS)
+  column_info[,2]<-as.character(column_info[,2])
+  column_info[,1]<-as.character(column_info[,1])
   
-  condb<-dbConnect(RSQLite::SQLite(), paste0("digest/phenotypesdemo.db"))
-  dbWriteTable(condb,"phenotypes",phenotypes,overwrite=T,row.names=F)
-  dbDisconnect(condb)
+  column_info<-column_info[c(nrow(column_info),1:(nrow(column_info)-1)),]
+  column_info[2,2]<-"factor"
   
-  data[which(data[,1]=="ULB"),5]<-""
-  write.table(file="phenotypes.csv",data,col.names=T,row.names=F,sep=',')
+  column_info<-rbind(column_info[26,],column_info[1:25,])
   
-  gene_list<-read.table("Guillaume_genes_new.txt",stringsAsFactor=F)[,1]
-  gene_list_str<-paste0(gene_list,collapse=',')
+  for (i in 2:nrow(column_info)) {
+    if (column_info[i,2]=="character") {
+      print(i)
+      nbFields<-collect(sql(sqlContext,paste0("select count(distinct ",column_info[i,1],") from ",VARIANTS_TABLE)))
+      if (nbFields<30) column_info[i,2]<-"factor"
+    }
+  }
   
-  gene_list<-read.table("DIDA_genes.txt",stringsAsFactor=F)[,1]
-  gene_list_str<-paste0(gene_list,collapse="','")
-  
-  #ARHGAP11B,ASPM,ATR,ATRIP,BLM,BRAT1,C7orf27,BUB1B,CASC5,CASK,CCDC7,CDC6,CDK5RAP2,CDT1,CENPF,CENPJ,CEP135,CEP152,CEP250,CEP63,CIT,COX7B,DYRK1A,EFTUD2,EIF2AK3,ERCC3,ERCC4,ERCC5,ERCC6,ERCC8,IER3IP1,KIF11,KMT2B,MLL4,MLL2,LIG4,MCPH1,MYCN,NBN,NDE1,NIN,NIPBL,ORC1,ORC1L,ORC4,ORC4L,ORC6,ORC6L,PCNT,PHC1,PLK4,PNKP,PPM1D,RAD50,RBBP8,RNU4ATAC,SASS6,SLC25A19,SLC9A6,SMC1A,SMC3,STAMBP,STIL,TRMT10A,RG9MTD2,TUBA1A,TUBB,TUBB2B,TUBB3,TUBG1,TUBGCP4,TUBGCP6,UBE3A,WDR62,ZEB2
-  
-  
+  filters<-list()
+  for (i in 1:nrow(column_info)) {
+    filterCol<-
+      switch(column_info[i,2],
+             character=list(
+               id= column_info[i,1],
+               label= column_info[i,1],
+               type= 'string',
+               default_value="",
+               operators=list('equal','not_equal','contains', 'in', 'not_in','begins_with', 'ends_with','is_null', 'is_not_null')),
+             factor={
+               values<-sort(collect(sql(sqlContext,paste0("select distinct ",column_info[i,1]," from ",VARIANTS_TABLE)))[,1])
+               if (length(values)==1) values<-c("",values)
+               list(
+                 id= column_info[i,1],
+                 label= column_info[i,1],
+                 type= 'string',
+                 input='select',
+                 values=values,
+                 default_value=values[1],
+                 operators=list('equal','not_equal','contains', 'in', 'not_in','is_null', 'is_not_null'))
+             },
+             numeric=list(
+               id= column_info[i,1],
+               label= column_info[i,1],
+               type= 'integer',
+               default_value="",
+               operators=list('equal','not_equal','less', 'less_or_equal', 'greater','greater_or_equal','between','in', 'not_in','is_null', 'is_not_null')),
+             integer=list(
+               id= column_info[i,1],
+               label= column_info[i,1],
+               type= 'integer',
+               default_value="",
+               operators=list('equal','not_equal','less', 'less_or_equal', 'greater','greater_or_equal','between','in', 'not_in','is_null', 'is_not_null'))
+     )
+    filters<-c(filters,list(filterCol))
+  }
+  save(file="filterVariantSpec.Rdata",filters)
 }
 
 
